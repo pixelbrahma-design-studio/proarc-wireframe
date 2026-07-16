@@ -28,15 +28,17 @@
   function injectStyles() {
     var css =
       '#wf-ui{font-family:Arial,Helvetica,sans-serif;}' +
-      '#wf-banner{position:fixed;top:0;left:0;right:0;z-index:99998;background:#111111;color:#FFFFFF;' +
-      'font-size:12px;line-height:1.5;padding:10px 20px;display:flex;justify-content:space-between;' +
-      'gap:16px;align-items:center;}' +
+      '#wf-banner{position:relative;background:#111111;color:#FFFFFF;' +
+      'font-size:12px;line-height:1.5;padding:10px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;' +
+      'gap:10px;align-items:center;}' +
       '#wf-banner button{background:transparent;border:1px solid #FFFFFF;color:#FFFFFF;font-size:11px;' +
       'padding:6px 10px;cursor:pointer;text-transform:uppercase;letter-spacing:.03em;flex:none;}' +
       '#wf-banner button:hover{background:#FFFFFF;color:#111111;}' +
-      '#wf-toolbar{position:fixed;bottom:20px;right:20px;z-index:99999;background:#FFFFFF;' +
+      '#wf-toolbar{position:fixed;bottom:14px;right:14px;left:14px;z-index:99999;background:#FFFFFF;' +
       'border:1px solid #111111;box-shadow:0 4px 18px rgba(0,0,0,.18);padding:10px;' +
-      'display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:260px;}' +
+      'display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:260px;margin-left:auto;}' +
+      '@media (max-width:520px){#wf-toolbar{max-width:none;left:14px;right:14px;}' +
+      '#wf-toolbar button{flex:1 1 auto;}}' +
       '#wf-toolbar button{font-family:inherit;font-size:11px;letter-spacing:.03em;text-transform:uppercase;' +
       'border:1px solid #111111;background:#FFFFFF;color:#111111;padding:9px 12px;cursor:pointer;}' +
       '#wf-toolbar button.primary{background:#111111;color:#FFFFFF;}' +
@@ -107,7 +109,11 @@
 
     wrap.appendChild(bannerEl);
     wrap.appendChild(toolbarEl);
-    document.body.appendChild(wrap);
+    // Insert as the FIRST element in body (not appended at the end) so the
+    // in-flow banner pushes the real header down instead of covering it.
+    // #wf-toolbar is position:fixed, so its place in the DOM doesn't affect
+    // where it renders — it still floats bottom-right regardless of nesting.
+    document.body.insertBefore(wrap, document.body.firstChild);
   }
 
   function markEditables() {
