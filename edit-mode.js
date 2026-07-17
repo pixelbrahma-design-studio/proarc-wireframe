@@ -18,7 +18,7 @@
   var STORAGE_PREFIX = 'proarc-wf-draft:';
   var pageKey = STORAGE_PREFIX + (location.pathname.split('/').pop() || 'index');
   var editMode = false;
-  var toolbarEl, bannerEl, statusEl, toggleBtn;
+  var toolbarEl, bannerEl, statusEl, toggleBtn, saveBtn;
 
   var EDITABLE_SELECTOR = [
     'h1', 'h2', 'h3', 'h4', 'p', 'li', 'b',
@@ -48,7 +48,7 @@
       'border:1px solid #111111;background:#FFFFFF;color:#111111;padding:9px 12px;cursor:pointer;}' +
       '#wf-toolbar button.primary{background:#111111;color:#FFFFFF;}' +
       '#wf-toolbar button.on{background:#B0AA8F;border-color:#B0AA8F;color:#FFFFFF;}' +
-      '#wf-toolbar button.save{background:#B0AA8F;border-color:#B0AA8F;color:#FFFFFF;}' +
+      '#wf-toolbar button.save.dirty{background:#111111;border-color:#111111;color:#FFFFFF;}' +
       '#wf-toolbar button:hover{opacity:.85;}' +
       '#wf-status{font-size:10px;color:#8C8C8C;width:100%;line-height:1.4;}' +
       '.wf-editable[contenteditable="true"]{outline:1px dashed transparent;outline-offset:2px;cursor:text;}' +
@@ -89,13 +89,13 @@
     toggleBtn.textContent = 'Edit Mode: Off';
     toggleBtn.addEventListener('click', function () { setEditMode(!editMode); });
 
-    var saveBtn = document.createElement('button');
+    saveBtn = document.createElement('button');
     saveBtn.type = 'button';
     saveBtn.className = 'save';
     saveBtn.textContent = 'Save';
     saveBtn.addEventListener('click', function () {
       saveDraft();
-      dirty = false;
+      setDirty(false);
     });
 
     var resetBtn = document.createElement('button');
@@ -164,10 +164,15 @@
   }, true);
 
   var dirty = false;
+  function setDirty(on) {
+    dirty = on;
+    if (saveBtn) saveBtn.classList.toggle('dirty', on);
+  }
+
   document.addEventListener('input', function (e) {
     if (!editMode) return;
     if (e.target.closest && e.target.closest('#wf-ui')) return;
-    dirty = true;
+    setDirty(true);
     if (statusEl) statusEl.textContent = 'Unsaved changes — click "Save" to keep them.';
   }, true);
 
@@ -195,7 +200,7 @@
   }
 
   function discardDraft() {
-    dirty = false;
+    setDirty(false);
     localStorage.removeItem(pageKey);
   }
 
