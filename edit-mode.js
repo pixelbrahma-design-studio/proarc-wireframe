@@ -1,24 +1,34 @@
 /* =========================================================
    PROARC Wireframe — Client Edit Mode
    Lets someone click into any text on the page and edit it.
-   Clicking Save writes the changes to this browser's storage;
-   they're restored automatically next time this page loads in
-   the same browser — no export/download step needed. Drop this
-   file next to any wireframe page and add:
+   Clicking Save writes the changes to a shared Firebase Realtime
+   Database, so anyone opening the same page on any device/browser
+   sees the latest saved content. Falls back to this browser's own
+   storage if Firebase can't be reached. Drop this file next to any
+   wireframe page and add:
      <script src="edit-mode.js" defer></script>
    right before </body>.
-
-   Note: this is per-browser only (localStorage). Edits made here
-   won't appear if the page is opened on a different device or
-   browser, or if this browser's site data is cleared.
    ========================================================= */
 (function () {
   'use strict';
 
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyCZeaQ_Vuly35Gj9MGmgWWwMGG3rx82UOw",
+    authDomain: "proarc-wireframe.firebaseapp.com",
+    databaseURL: "https://proarc-wireframe-default-rtdb.firebaseio.com",
+    projectId: "proarc-wireframe",
+    storageBucket: "proarc-wireframe.firebasestorage.app",
+    messagingSenderId: "468165231065",
+    appId: "1:468165231065:web:689c279b0cb4c4cf0799c8"
+  };
+  var FIREBASE_SDK_VERSION = '10.12.2';
+
   var STORAGE_PREFIX = 'proarc-wf-draft:';
   var pageKey = STORAGE_PREFIX + (location.pathname.split('/').pop() || 'index');
+  var dbPath = 'pages/' + (location.pathname.split('/').pop() || 'index').replace(/[.#$/\[\]]/g, '_');
   var editMode = false;
   var toolbarEl, bannerEl, statusEl, toggleBtn, saveBtn;
+  var db = null; // set once Firebase has loaded and initialized successfully
 
   var EDITABLE_SELECTOR = [
     'h1', 'h2', 'h3', 'h4', 'p', 'li', 'b',
@@ -72,7 +82,7 @@
     bannerEl = document.createElement('div');
     bannerEl.id = 'wf-banner';
     var msg = document.createElement('span');
-    msg.innerHTML = 'Editable draft — <b>' + pageLabel() + '</b>. Turn on <b>Edit Mode</b> (bottom-right), click any text to change it, then hit <b>Save</b> — your changes will still be here next time you open this page in this browser.';
+    msg.innerHTML = 'Editable draft — <b>' + pageLabel() + '</b>. Turn on <b>Edit Mode</b> (bottom-right), click any text to change it, then hit <b>Save</b> — anyone opening this page afterwards will see your changes.';
     var dismiss = document.createElement('button');
     dismiss.type = 'button';
     dismiss.textContent = 'Got it';
@@ -102,7 +112,7 @@
     resetBtn.type = 'button';
     resetBtn.textContent = 'Reset';
     resetBtn.addEventListener('click', function () {
-      if (confirm('Discard your edits on this page and reload the original?')) {
+      if (confirm('Discard the saved changes on this page for everyone and reload the original?')) {
         discardDraft();
         location.reload();
       }
@@ -192,31 +202,80 @@
   }
 
   function saveDraft() {
-    var clone = cleanClone(document.body.cloneNode(true));
-    localStorage.setItem(pageKey, clone.innerHTML);
-    if (statusEl) {
-      statusEl.textContent = 'Saved in this browser at ' + new Date().toLocaleTimeString() + '. Refresh anytime — your changes will still be here.';
+    var html = cleanClone(document.body.cloneNode(true)).innerHTML;
+    // Always keep a local copy too, as an offline fallback.
+    try { localStorage.setItem(pageKey, html); } catch (e) { /* ignore quota/private-mode errors */ }
+
+    if (!db) {
+      if (statusEl) statusEl.textContent = 'Saved to this browser only — cloud sync is unavailable right now.';
+      return;
     }
+    db.ref(dbPath).set({ html: html, savedAt: firebase.database.ServerValue.TIMESTAMP })
+      .then(function () {
+        if (statusEl) statusEl.textContent = 'Saved at ' + new Date().toLocaleTimeString() + ' — visible to anyone opening this page.';
+      })
+      .catch(function (err) {
+        console.error('Firebase save failed:', err);
+        if (statusEl) statusEl.textContent = 'Cloud save failed — kept a copy in this browser only. Check your connection and try again.';
+      });
   }
 
   function discardDraft() {
     setDirty(false);
-    localStorage.removeItem(pageKey);
+    try { localStorage.removeItem(pageKey); } catch (e) { /* ignore */ }
+    if (db) db.ref(dbPath).remove().catch(function (err) { console.error('Firebase remove failed:', err); });
   }
 
-  function restoreDraft() {
-    var saved = localStorage.getItem(pageKey);
-    if (!saved) return false;
-    document.body.innerHTML = saved;
-    return true;
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  function initFirebase() {
+    var base = 'https://www.gstatic.com/firebasejs/' + FIREBASE_SDK_VERSION + '/';
+    return loadScript(base + 'firebase-app-compat.js')
+      .then(function () { return loadScript(base + 'firebase-database-compat.js'); })
+      .then(function () {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        db = firebase.database();
+      });
+  }
+
+  // Try the shared cloud copy first (so everyone sees the same content);
+  // fall back to this browser's own local copy if Firebase is unreachable.
+  function fetchSavedHtml() {
+    return initFirebase()
+      .then(function () { return db.ref(dbPath).once('value'); })
+      .then(function (snap) {
+        var val = snap.val();
+        return val && val.html ? { html: val.html, source: 'cloud' } : null;
+      })
+      .catch(function (err) {
+        console.error('Firebase unavailable, falling back to local storage:', err);
+        db = null;
+        var local = null;
+        try { local = localStorage.getItem(pageKey); } catch (e) { /* ignore */ }
+        return local ? { html: local, source: 'local' } : null;
+      });
   }
 
   function init() {
     injectStyles();
-    var restored = restoreDraft();
-    buildUI();
-    markEditables();
-    if (restored) statusEl.textContent = 'Restored your saved changes on this browser.';
+    fetchSavedHtml().then(function (result) {
+      if (result) document.body.innerHTML = result.html;
+      buildUI();
+      markEditables();
+      if (result && result.source === 'cloud') {
+        statusEl.textContent = 'Showing the latest saved version.';
+      } else if (result && result.source === 'local') {
+        statusEl.textContent = 'Cloud sync unavailable — showing a version saved in this browser only.';
+      }
+    });
   }
 
   if (document.readyState === 'loading') {
