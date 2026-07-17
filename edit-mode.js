@@ -1,11 +1,16 @@
 /* =========================================================
    PROARC Wireframe — Client Edit Mode
-   Lets a client click into any text on the page, edit it,
-   and export a standalone HTML file with their changes baked
-   in. No backend — edits autosave to this browser only until
-   exported. Drop this file next to any wireframe page and add:
+   Lets someone click into any text on the page and edit it.
+   Changes autosave to this browser's storage as they type, and
+   are restored automatically next time this page loads in the
+   same browser — no export/download step needed. Drop this file
+   next to any wireframe page and add:
      <script src="edit-mode.js" defer></script>
    right before </body>.
+
+   Note: this is per-browser only (localStorage). Edits made here
+   won't appear if the page is opened on a different device or
+   browser, or if this browser's site data is cleared.
    ========================================================= */
 (function () {
   'use strict';
@@ -36,7 +41,7 @@
       '#wf-banner button:hover{background:#FFFFFF;color:#111111;}' +
       '#wf-toolbar{position:fixed;bottom:14px;right:14px;left:14px;z-index:99999;background:#FFFFFF;' +
       'border:1px solid #111111;box-shadow:0 4px 18px rgba(0,0,0,.18);padding:10px;' +
-      'display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:260px;margin-left:auto;}' +
+      'display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:220px;margin-left:auto;}' +
       '@media (max-width:520px){#wf-toolbar{max-width:none;left:14px;right:14px;}' +
       '#wf-toolbar button{flex:1 1 auto;}}' +
       '#wf-toolbar button{font-family:inherit;font-size:11px;letter-spacing:.03em;text-transform:uppercase;' +
@@ -66,7 +71,7 @@
     bannerEl = document.createElement('div');
     bannerEl.id = 'wf-banner';
     var msg = document.createElement('span');
-    msg.innerHTML = 'Editable draft — <b>' + pageLabel() + '</b>. Turn on <b>Edit Mode</b> (bottom-right) to click and change any text, then <b>Export Page</b> to download your changes and send the file back.';
+    msg.innerHTML = 'Editable draft — <b>' + pageLabel() + '</b>. Turn on <b>Edit Mode</b> (bottom-right) and click any text to change it — it saves automatically in this browser, so refreshing the page keeps your changes.';
     var dismiss = document.createElement('button');
     dismiss.type = 'button';
     dismiss.textContent = 'Got it';
@@ -83,11 +88,6 @@
     toggleBtn.textContent = 'Edit Mode: Off';
     toggleBtn.addEventListener('click', function () { setEditMode(!editMode); });
 
-    var exportBtn = document.createElement('button');
-    exportBtn.type = 'button';
-    exportBtn.textContent = 'Export Page';
-    exportBtn.addEventListener('click', exportPage);
-
     var resetBtn = document.createElement('button');
     resetBtn.type = 'button';
     resetBtn.textContent = 'Reset';
@@ -103,7 +103,6 @@
     statusEl.textContent = 'Not editing — click "Edit Mode" to start.';
 
     toolbarEl.appendChild(toggleBtn);
-    toolbarEl.appendChild(exportBtn);
     toolbarEl.appendChild(resetBtn);
     toolbarEl.appendChild(statusEl);
 
@@ -166,7 +165,7 @@
     var clone = cleanClone(document.body.cloneNode(true));
     localStorage.setItem(pageKey, clone.innerHTML);
     if (statusEl) {
-      statusEl.textContent = 'Draft saved to this browser at ' + new Date().toLocaleTimeString() + '. Click Export when done.';
+      statusEl.textContent = 'Saved in this browser at ' + new Date().toLocaleTimeString() + '. Refresh anytime — your changes will still be here.';
     }
   }
 
@@ -177,35 +176,12 @@
     return true;
   }
 
-  function exportPage() {
-    var clone = cleanClone(document.documentElement.cloneNode(true));
-    clone.querySelectorAll('style#wf-ui-style').forEach(function (n) { n.remove(); });
-    clone.querySelectorAll('script[src*="edit-mode.js"]').forEach(function (n) { n.remove(); });
-
-    var html = '<!DOCTYPE html>\n' + clone.outerHTML;
-    var blob = new Blob([html], { type: 'text/html' });
-    var url = URL.createObjectURL(blob);
-    var base = (location.pathname.split('/').pop() || 'page').replace('.html', '');
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = base + '-client-edits.html';
-    // Append inside #wf-ui, not document.body — the edit-mode link-blocker
-    // (see the capture-phase click listener above) ignores clicks inside
-    // #wf-ui, so this synthetic click still triggers the download even
-    // while Edit Mode is on.
-    document.getElementById('wf-ui').appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    if (statusEl) statusEl.textContent = 'Exported "' + link.download + '" — send this file back to update the site.';
-  }
-
   function init() {
     injectStyles();
     var restored = restoreDraft();
     buildUI();
     markEditables();
-    if (restored) statusEl.textContent = 'Restored your last saved draft on this browser.';
+    if (restored) statusEl.textContent = 'Restored your saved changes on this browser.';
   }
 
   if (document.readyState === 'loading') {
