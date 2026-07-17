@@ -1,10 +1,10 @@
 /* =========================================================
    PROARC Wireframe — Client Edit Mode
    Lets someone click into any text on the page and edit it.
-   Changes autosave to this browser's storage as they type, and
-   are restored automatically next time this page loads in the
-   same browser — no export/download step needed. Drop this file
-   next to any wireframe page and add:
+   Clicking Save writes the changes to this browser's storage;
+   they're restored automatically next time this page loads in
+   the same browser — no export/download step needed. Drop this
+   file next to any wireframe page and add:
      <script src="edit-mode.js" defer></script>
    right before </body>.
 
@@ -41,13 +41,14 @@
       '#wf-banner button:hover{background:#FFFFFF;color:#111111;}' +
       '#wf-toolbar{position:fixed;bottom:14px;right:14px;left:14px;z-index:99999;background:#FFFFFF;' +
       'border:1px solid #111111;box-shadow:0 4px 18px rgba(0,0,0,.18);padding:10px;' +
-      'display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:220px;margin-left:auto;}' +
+      'display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:280px;margin-left:auto;}' +
       '@media (max-width:520px){#wf-toolbar{max-width:none;left:14px;right:14px;}' +
       '#wf-toolbar button{flex:1 1 auto;}}' +
       '#wf-toolbar button{font-family:inherit;font-size:11px;letter-spacing:.03em;text-transform:uppercase;' +
       'border:1px solid #111111;background:#FFFFFF;color:#111111;padding:9px 12px;cursor:pointer;}' +
       '#wf-toolbar button.primary{background:#111111;color:#FFFFFF;}' +
       '#wf-toolbar button.on{background:#B0AA8F;border-color:#B0AA8F;color:#FFFFFF;}' +
+      '#wf-toolbar button.save{background:#B0AA8F;border-color:#B0AA8F;color:#FFFFFF;}' +
       '#wf-toolbar button:hover{opacity:.85;}' +
       '#wf-status{font-size:10px;color:#8C8C8C;width:100%;line-height:1.4;}' +
       '.wf-editable[contenteditable="true"]{outline:1px dashed transparent;outline-offset:2px;cursor:text;}' +
@@ -71,7 +72,7 @@
     bannerEl = document.createElement('div');
     bannerEl.id = 'wf-banner';
     var msg = document.createElement('span');
-    msg.innerHTML = 'Editable draft — <b>' + pageLabel() + '</b>. Turn on <b>Edit Mode</b> (bottom-right) and click any text to change it — it saves automatically in this browser, so refreshing the page keeps your changes.';
+    msg.innerHTML = 'Editable draft — <b>' + pageLabel() + '</b>. Turn on <b>Edit Mode</b> (bottom-right), click any text to change it, then hit <b>Save</b> — your changes will still be here next time you open this page in this browser.';
     var dismiss = document.createElement('button');
     dismiss.type = 'button';
     dismiss.textContent = 'Got it';
@@ -88,12 +89,21 @@
     toggleBtn.textContent = 'Edit Mode: Off';
     toggleBtn.addEventListener('click', function () { setEditMode(!editMode); });
 
+    var saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'save';
+    saveBtn.textContent = 'Save';
+    saveBtn.addEventListener('click', function () {
+      saveDraft();
+      dirty = false;
+    });
+
     var resetBtn = document.createElement('button');
     resetBtn.type = 'button';
     resetBtn.textContent = 'Reset';
     resetBtn.addEventListener('click', function () {
       if (confirm('Discard your edits on this page and reload the original?')) {
-        localStorage.removeItem(pageKey);
+        discardDraft();
         location.reload();
       }
     });
@@ -103,6 +113,7 @@
     statusEl.textContent = 'Not editing — click "Edit Mode" to start.';
 
     toolbarEl.appendChild(toggleBtn);
+    toolbarEl.appendChild(saveBtn);
     toolbarEl.appendChild(resetBtn);
     toolbarEl.appendChild(statusEl);
 
@@ -119,6 +130,13 @@
     var seen = [];
     document.querySelectorAll(EDITABLE_SELECTOR).forEach(function (el) {
       if (el.closest(SKIP_SELECTOR)) return;
+      // A page-hero placeholder with a .title-overlay inside it mixes real
+      // page copy (the title) with instructional wireframe notes (the rest
+      // of the placeholder text). Don't make the whole box one editable
+      // region — that lets selecting/retyping the title wipe out the notes
+      // too. Skip the placeholder itself so .title-overlay gets its own
+      // separate editable region instead, further down this same pass.
+      if (el.matches('.placeholder') && el.querySelector('.title-overlay')) return;
       var nested = seen.some(function (s) { return s !== el && s.contains(el); });
       if (nested) return;
       el.classList.add('wf-editable');
@@ -145,13 +163,20 @@
     if (a && !a.closest('#wf-ui')) e.preventDefault();
   }, true);
 
-  var saveTimer;
+  var dirty = false;
   document.addEventListener('input', function (e) {
     if (!editMode) return;
     if (e.target.closest && e.target.closest('#wf-ui')) return;
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveDraft, 400);
+    dirty = true;
+    if (statusEl) statusEl.textContent = 'Unsaved changes — click "Save" to keep them.';
   }, true);
+
+  // Warn before leaving/refreshing with edits that haven't been saved yet.
+  window.addEventListener('beforeunload', function (e) {
+    if (!dirty) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
 
   function cleanClone(root) {
     var ui = root.querySelector('#wf-ui');
@@ -167,6 +192,11 @@
     if (statusEl) {
       statusEl.textContent = 'Saved in this browser at ' + new Date().toLocaleTimeString() + '. Refresh anytime — your changes will still be here.';
     }
+  }
+
+  function discardDraft() {
+    dirty = false;
+    localStorage.removeItem(pageKey);
   }
 
   function restoreDraft() {
