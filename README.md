@@ -32,7 +32,7 @@ If Firebase can't be reached (offline, blocked, etc.), it falls back to saving i
 
 ## Password protection
 
-All 8 pages load [auth-gate.js](auth-gate.js), which shows a full-screen password prompt (current password: `pixelbrahma123`) before revealing the page. Once entered correctly on a device/browser, it's remembered there (`localStorage`) and won't ask again.
+All 8 pages load [auth-gate.js](auth-gate.js), which shows a full-screen password prompt (current password: `Ajman#Skyline2026!`) before revealing the page. Once entered correctly on a device/browser, it's remembered there (`localStorage`) and won't ask again.
 
 **This is a soft gate, not real security** — the password is plain text in `auth-gate.js`, visible to anyone who views the page source. It's meant to keep casual/uninvited visitors out of a draft link, not to protect sensitive information. To change the password, edit the `PASSWORD` value in `auth-gate.js`.
 

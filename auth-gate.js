@@ -16,7 +16,7 @@
   'use strict';
 
   var AUTH_KEY = 'proarc-wf-auth';
-  var PASSWORD = 'pixelbrahma123';
+  var PASSWORD = 'Ajman#Skyline2026!';
 
   if (localStorage.getItem(AUTH_KEY) === '1') return;
 
