@@ -1,6 +1,6 @@
 # Proarc Website Wireframe
 
-Low-fidelity, real-content wireframe for the Proarc website (8 pages) — [index.html](index.html) is the package landing page linking to all of them.
+Low-fidelity, real-content wireframe for the Proarc website (7 pages) — [index.html](index.html) is the package landing page linking to all of them.
 
 **A note on editing pages after they've been saved live:** once a page has been edited and saved via Edit Mode on the deployed site, Firebase always serves that saved version instead of the static HTML file — so if you edit a page's source file here, your changes won't show up on the live site until you also clear that page's Firebase entry:
 ```
@@ -44,12 +44,13 @@ All 8 pages load [auth-gate.js](auth-gate.js), which shows a full-screen passwor
 
 ## Files
 
-- `index.html` — wireframe package index (not editable, just links to the 8 pages)
-- `home.html`, `about.html`, `services.html`, `projects.html`, `case-studies.html`, `testimonials.html`, `careers.html`, `contact.html` — the wireframe pages
+- `index.html` — wireframe package index (not editable, just links to the 7 pages)
+- `home.html`, `about.html`, `services.html`, `projects.html`, `testimonials.html`, `careers.html`, `contact.html` — the wireframe pages
 - `styles.css` — shared styling for all pages
-- `edit-mode.js` — the in-browser edit toolbar, saves to Firebase (falls back to `localStorage` if offline), shared by all 8 wireframe pages
-- `auth-gate.js` — the password prompt, shared by all 8 pages
+- `edit-mode.js` — the in-browser edit toolbar, saves to Firebase (falls back to `localStorage` if offline), shared by all 7 wireframe pages
+- `auth-gate.js` — the password prompt, shared by all 8 pages (the 7 above, plus `index.html`)
+- `assets/logos/` — client logos cropped from `Logos.pdf`, used as real `<img>` logos in the client walls (companies without a logo image show as text instead)
 
 ## Client list source
 
-The client names on Home, About and Testimonials come from `CLIENTS.pdf` and `Logos.pdf` (kept in the repo root as reference, not part of the deployed site) — a merged, deduplicated list of ~47 organisations. Confirm the final public-facing list and any logo usage permissions with each organisation before treating this as final.
+The client wall on Home, About and Testimonials comes from `CLIENTS.pdf` and `Logos.pdf` (kept in the repo root as reference, not part of the deployed site) — a merged, deduplicated list of ~47 organisations. The ~34 with a logo in `Logos.pdf` show as real images (`assets/logos/`, cropped out programmatically); the rest (named only in `CLIENTS.pdf`, no artwork available) show as plain text. Confirm the final public-facing list and any logo usage permissions with each organisation before treating this as final.
