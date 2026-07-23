@@ -53,4 +53,4 @@ All 8 pages load [auth-gate.js](auth-gate.js), which shows a full-screen passwor
 
 ## Client list source
 
-The client wall on Home, About and Testimonials comes from `CLIENTS.pdf` and `Logos.pdf` (kept in the repo root as reference, not part of the deployed site) — a merged, deduplicated list of ~47 organisations. The ~34 with a logo in `Logos.pdf` show as real images (`assets/logos/`, cropped out programmatically); the rest (named only in `CLIENTS.pdf`, no artwork available) show as plain text. Confirm the final public-facing list and any logo usage permissions with each organisation before treating this as final.
+The client wall on Home and About comes from `CLIENTS.pdf` and `Logos.pdf` (kept in the repo root as reference, not part of the deployed site) — a merged, deduplicated list of ~47 organisations. The ~34 with a logo in `Logos.pdf` show as real images (`assets/logos/`, cropped out programmatically); the rest (named only in `CLIENTS.pdf`, no artwork available) show as plain text. Confirm the final public-facing list and any logo usage permissions with each organisation before treating this as final.
